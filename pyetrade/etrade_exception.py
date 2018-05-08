@@ -6,7 +6,7 @@ class OrderException(Exception):
         self.args = (explanation, params, )
 
     def __str__(self):
-        return 'Missing required paramiters'
+        return 'Missing required parameters'
 
 class MarketQuoteException(Exception):
     def __init__(self, explanation=None, params=None):
@@ -14,4 +14,4 @@ class MarketQuoteException(Exception):
         self.args = (explanation, params, )
 
     def __str__(self):
-        return 'Symbole max exceeded limit 25'
+        return 'Symbol max exceeded limit 25'

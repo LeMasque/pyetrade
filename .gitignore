@@ -1,4 +1,9 @@
 # ---> Python
+# Common virtual environment names
+venv/
+env/
+virtualenv/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

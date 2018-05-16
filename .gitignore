@@ -1,4 +1,7 @@
 # ---> Python
+# config.json file containing API keys and such
+config.json
+
 # Common virtual environment names
 venv/
 env/

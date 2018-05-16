@@ -15,40 +15,17 @@
 import logging
 from requests_oauthlib import OAuth1Session
 from pyetrade.etrade_exception import OrderException
-# Set up logging
-LOGGER = logging.getLogger(__name__)
+from pyetrade.etrade import ETrade
 
-class ETradeOrder(object):
+class ETradeOrder(ETrade):
     '''ETradeOrder'''
-    def __init__(self, client_key, client_secret,
-                 resource_owner_key, resource_owner_secret):
-        '''__init__(client_key, client_secret)
-           param: client_key
-           type: str
-           description: etrade client key
-           param: client_secret
-           type: str
-           description: etrade client secret
-           param: resource_owner_key
-           type: str
-           description: OAuth authentication token key
-           param: resource_owner_secret
-           type: str
-           description: OAuth authentication token secret'''
-        self.client_key = client_key
-        self.client_secret = client_secret
-        self.resource_owner_key = resource_owner_key
-        self.resource_owner_secret = resource_owner_secret
-        self.base_url_prod = r'https://etws.etrade.com'
-        self.base_url_dev = r'https://etwssandbox.etrade.com'
-        self.session = OAuth1Session(self.client_key,
-                                     self.client_secret,
-                                     self.resource_owner_key,
-                                     self.resource_owner_secret,
-                                     signature_type='AUTH_HEADER')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set up logging
+        self.log = logging.getLogger(__name__)
 
-    def list_orders(self, account_id, dev=True,
-                    resp_format='json', **kwargs):
+    @ETrade.Decorators.etrade_api_request
+    def list_orders(self, account_id, response_type='json', **kwargs):
         '''list_orders(dev, resp_format) -> resp
            param: account_id
            type: int
@@ -63,38 +40,19 @@ class ETradeOrder(object):
            description: The number of orders to return in a response.
                 The default is 25. Used for paging.
            rdescription: see ETrade API docs'''
-        # Set Env
-        if dev:
-            uri = r'order/sandbox/rest/orderlist'
-            api_url = '%s/%s/%s.%s' % (
-                self.base_url_dev,
-                uri,
-                account_id,
-                resp_format
-                )
-        else:
-            uri = r'order/rest/orderlist'
-            api_url = '%s/%s/%s.%s' % (
-                self.base_url_prod,
-                uri,
-                account_id,
-                resp_format
-                )
 
-        # Build Payload
-        payload = kwargs
-        LOGGER.debug('payload: %s', payload)
+        return {
+            'method': 'GET',
+            'uri': self.make_url(
+                module='order',
+                action='orderlist/{acct_id}'.format(acct_id=account_id),
+                response_type=response_type
+            ),
+            'params': kwargs
+        }
 
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url, params=payload)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def place_equity_order(self, dev=True, resp_format='json', **kwargs):
+    @ETrade.Decorators.etrade_api_request
+    def place_equity_order(self, response_type='json', **kwargs):
         '''place_equity_order(dev, resp_format, **kwargs) -> resp
            param: dev
            type: bool
@@ -334,60 +292,48 @@ class ETradeOrder(object):
                              * ARCA
                              * NSDQ
                              * NYSE'''
-        # Build Payload
-        LOGGER.debug(kwargs)
-        # Test required values
-        if 'accountId' not in kwargs and\
-           'symbol' not in kwargs and\
-           'orderAction' not in kwargs and\
-           'clientOrderId' not in kwargs and\
-           'priceType' not in kwargs and\
-           'quantity' not in kwargs and\
-           'orderTerm' not in kwargs and\
-           'marketSession' not in kwargs:
+
+        required_parameters = [
+            'accountId',
+            'symbol',
+            'orderAction',
+            'clientOrderId',
+            'priceType',
+            'quantity',
+            'orderTerm',
+            'marketSession'
+        ]
+
+        if ETrade.is_missing_requirements(required_parameters, kwargs):
+            raise OrderException('missing required parameters')
+
+        # TODO: consider making "is_missing_requirements" handle conditionals
+
+        # STOP / STOP_LIMIT
+        if 'STOP' in kwargs['priceType'] and 'stopPrice' not in kwargs:
             raise OrderException
 
-        if kwargs['priceType'] == 'STOP' and \
-           'stopPrice' not in kwargs:
-            raise OrderException
-        if kwargs['priceType'] == 'LIMIT' and \
-           'limitPrice' not in kwargs:
-            raise OrderException
-        if kwargs['priceType'] == 'STOP_LIMIT' and \
-           'limitPrice' not in kwargs and \
-           'stopPrice' not in kwargs:
+        # LIMIT / STOP_LIMIT
+        if 'LIMIT' in kwargs['priceType'] and 'limitPrice' not in kwargs:
             raise OrderException
 
-        # Init payload
-        payload = {'PlaceEquityOrder': ''}
+        return {
+            'method': 'POST',
+            'url': self.make_url(
+                module='order',
+                action='placeequityorder'
+            ),
+            'json': {  # FIXME: This can't be 'json' if the response type isn't json.
+                'PlaceEquityOrder': {
+                    # TODO: Not documented, shown in examples of API usage however.
+                    #'-xmlns': 'http://order.etws.etrade.com',
+                    'EquityOrderRequest': kwargs
+                }
+            }
+        }
 
-        # Set Env
-        if dev:
-            uri = r'order/sandbox/rest/placeequityorder'
-            api_url = '%s/%s.%s' % (self.base_url_dev, uri, resp_format)
-            payload['PlaceEquityOrder'] = {'-xmlns': self.base_url_dev}
-            # Not sure if it matters
-            #payload['PlaceEquityOrder'] = {'-xmlns': r'http://order.etws.etrade.com'}
-        else:
-            uri = r'order/rest/placeequityorder'
-            api_url = '%s/%s.%s' % (self.base_url_prod, uri, resp_format)
-            payload['PlaceEquityOrder'] = {'-xmlns': self.base_url_prod}
-
-        # Build Payload
-        payload['PlaceEquityOrder']['EquityOrderRequest'] = kwargs
-        LOGGER.debug('payload: %s', payload)
-
-        LOGGER.debug(api_url)
-        req = self.session.post(api_url, json=payload)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def cancel_order(self, account_id, order_num,
-                     dev=True, resp_format='json'):
+    @ETrade.Decorators.etrade_api_request
+    def cancel_order(self, account_id, order_num, response_type='json'):
         '''cancel_order(account_id, order_num, dev, resp_format)
            param: account_id
            type: int
@@ -401,58 +347,22 @@ class ETradeOrder(object):
            param: resp_format
            type: str
            description: Response format JSON or None = XML'''
-        # Set Env
-        if dev:
-            payload = {
+
+        return {
+            'method': 'POST',
+            'url': self.make_url(
+                module='order',
+                action='cancelorder',
+                response_type=response_type
+            ),
+            'json': {  # FIXME: This can't be 'json' if the response type isn't json.
                 'cancelOrder': {
-                    '-xmlns': self.base_url_dev,
+                    # TODO: Not documented, shown in examples of API usage however.
+                    #'-xmlns': 'http://order.etws.etrade.com',
                     'cancelOrderRequest': {
                         'accountId': account_id,
                         'orderNum': order_num
-                        }
                     }
                 }
-            uri = r'order/sandbox/rest/cancelorder'
-            if resp_format == 'json':
-                api_url = '%s/%s.%s' % (
-                    self.base_url_dev,
-                    uri,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s' % (
-                    self.base_url_dev,
-                    uri
-                    )
-        else:
-            payload = {
-                'cancelOrder': {
-                    '-xmlns': self.base_url_prod,
-                    'cancelOrderRequest': {
-                        'accountId': account_id,
-                        'orderNum': order_num
-                        }
-                    }
-                }
-            uri = r'order/rest/cancelorder'
-            if resp_format == 'json':
-                api_url = '%s/%s.%s' % (
-                    self.base_url_prod,
-                    uri,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s' % (
-                    self.base_url_prod,
-                    uri
-                    )
-        LOGGER.debug(api_url)
-        LOGGER.debug('payload: %s', payload)
-
-        req = self.session.post(api_url, json=payload)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
+            }
+        }

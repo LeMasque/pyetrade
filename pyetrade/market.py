@@ -8,42 +8,18 @@
     * Get Quote - Doc String'''
 
 import logging
-from requests_oauthlib import OAuth1Session
 from pyetrade.etrade_exception import MarketQuoteException
-# Set up logging
-LOGGER = logging.getLogger(__name__)
+from pyetrade.etrade import ETrade
 
-class ETradeMarket(object):
+class ETradeMarket(ETrade):
     '''ETradeMarket'''
-    def __init__(self, client_key, client_secret,
-                 resource_owner_key, resource_owner_secret):
-        '''__init__(client_key, client_secret)
-           param: client_key
-           type: str
-           description: etrade client key
-           param: client_secret
-           type: str
-           description: etrade client secret
-           param: resource_owner_key
-           type: str
-           description: OAuth authentication token key
-           param: resource_owner_secret
-           type: str
-           description: OAuth authentication token secret'''
-        self.client_key = client_key
-        self.client_secret = client_secret
-        self.resource_owner_key = resource_owner_key
-        self.resource_owner_secret = resource_owner_secret
-        self.base_url_prod = r'https://etws.etrade.com'
-        self.base_url_dev = r'https://etwssandbox.etrade.com'
-        self.session = OAuth1Session(self.client_key,
-                                     self.client_secret,
-                                     self.resource_owner_key,
-                                     self.resource_owner_secret,
-                                     signature_type='AUTH_HEADER')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set up logging
+        self.log = logging.getLogger(__name__)
 
-    def look_up_product(self, company, s_type,
-                        dev=True, resp_format='json'):
+    @ETrade.Decorators.etrade_api_request
+    def look_up_product(self, company, security_type, response_type='json'):
         '''look_up_product() -> resp
            param: company
            type: string
@@ -68,40 +44,22 @@ class ETradeMarket(object):
            rparam: symbol
            rtype: string
            rdescription: the market symbol for the security'''
-        # Set Env join symbles with .join(args)
-        if dev:
-            if resp_format == 'json':
-                uri = r'market/sandbox/rest/productlookup'
-                api_url = '%s/%s.%s' % (
-                    self.base_url_dev, uri, resp_format
-                    )
-            elif resp_format == 'xml':
-                uri = r'market/sandbox/rest/productlookup'
-                api_url = '%s/%s' % (self.base_url_dev, uri)
-        else:
-            if resp_format == 'json':
-                uri = r'market/rest/productlookup'
-                api_url = '%s/%s.%s' % (
-                    self.base_url_prod, uri, resp_format
-                    )
-            elif resp_format == 'xml':
-                uri = r'market/rest/productlookup'
-                api_url = '%s/%s' % (self.base_url_prod, uri)
-        LOGGER.debug(api_url)
-        #add detail flag to url
-        payload = {
-            'company': company,
-            'type': s_type
+
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='market',
+                action='productlookup',
+                response_type=response_type
+            ),
+            'params': {
+                'company': company,
+                'type': security_type
             }
-        req = self.session.get(api_url, params=payload)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
+        }
 
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def get_quote(self, *args, dev=True, resp_format='json', detail_flag='ALL'):
+    @ETrade.Decorators.etrade_api_request
+    def get_quote(self, *args, response_type='json', detail_flag='ALL'):
         '''get_quote(dev, resp_format, **kwargs) -> resp
            param: dev
            type: bool
@@ -151,20 +109,15 @@ class ETradeMarket(object):
         # exception if args > 25
         if len(args) > 25:
             raise MarketQuoteException
-        # Set Env join symbles with .join(args)
-        if dev:
-            uri = r'market/sandbox/rest/quote/'+','.join(args)
-            api_url = '%s/%s.%s' % (self.base_url_dev, uri, resp_format)
-        else:
-            uri = r'market/rest/quote/'+','.join(args)
-            api_url = '%s/%s.%s' % (self.base_url_prod, uri, resp_format)
-        LOGGER.debug(api_url)
-        #add detail flag to url
-        payload = {'detailFlag': detail_flag}
-        req = self.session.get(api_url, params=payload)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
 
-        if resp_format == 'json':
-            return req.json()
-        return req.text
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='market',
+                action='quote/{args_list}'.format(args_list=','.join(args)),
+                response_type=response_type
+            ),
+            'params': {
+                'detailFlag': detail_flag
+            }
+        }

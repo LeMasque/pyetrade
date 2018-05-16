@@ -8,28 +8,21 @@
 
 import logging
 from requests_oauthlib import OAuth1Session
+from pyetrade.etrade import ETrade
+
 # Set up logging
 LOGGER = logging.getLogger(__name__)
 
-class ETradeAccounts(object):
+class ETradeAccounts(ETrade):
     '''ETradeAccounts:'''
-    def __init__(self, client_key, client_secret,
-                 resource_owner_key, resource_owner_secret):
-        '''__init_()
-           '''
-        self.client_key = client_key
-        self.client_secret = client_secret
-        self.resource_owner_key = resource_owner_key
-        self.resource_owner_secret = resource_owner_secret
-        self.base_url_prod = r'https://etws.etrade.com'
-        self.base_url_dev = r'https://etwssandbox.etrade.com'
-        self.session = OAuth1Session(self.client_key,
-                                     self.client_secret,
-                                     self.resource_owner_key,
-                                     self.resource_owner_secret,
-                                     signature_type='AUTH_HEADER')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set up logging
+        self.log = logging.getLogger(__name__)
 
-    def list_accounts(self, dev=True, resp_format='json'):
+
+    @ETrade.Decorators.etrade_api_request
+    def list_accounts(self, response_type='json'):
         '''list_account(dev, resp_format)
            param: dev
            type: bool
@@ -42,23 +35,17 @@ class ETradeAccounts(object):
            rformat: other than json
            rtype: str'''
 
-        if dev:
-            uri = r'accounts/sandbox/rest/accountlist'
-            api_url = '%s/%s.%s' % (self.base_url_dev, uri, resp_format)
-        else:
-            uri = r'accounts/rest/accountlist'
-            api_url = '%s/%s.%s' % (self.base_url_prod, uri, resp_format)
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='accounts',
+                action='accountlist',
+                response_type=response_type
+            )
+        }
 
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def get_account_balance(self, account_id, dev=True, resp_format='json'):
+    @ETrade.Decorators.etrade_api_request
+    def get_account_balance(self, account_id, response_type='json'):
         '''get_account_balance(dev, resp_format)
            param: account_id
            type: int
@@ -75,33 +62,17 @@ class ETradeAccounts(object):
            rformat: other than json
            rtype: str'''
 
-        if dev:
-            uri = r'accounts/sandbox/rest/accountbalance'
-            api_url = '%s/%s/%s.%s' % (
-                self.base_url_dev,
-                uri,
-                account_id,
-                resp_format
-                )
-        else:
-            uri = r'accounts/rest/accountbalance'
-            api_url = '%s/%s/%s.%s' % (
-                self.base_url_prod,
-                uri,
-                account_id,
-                resp_format
-                )
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='accounts',
+                action='accountbalance/{account}'.format(account=account_id),
+                response_type=response_type
+            )
+        }
 
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def get_account_positions(self, account_id, dev=True, resp_format='json'):
+    @ETrade.Decorators.etrade_api_request
+    def get_account_positions(self, account_id, response_type='json'):
         '''get_account_positions(dev, account_id, resp_format) -> resp
            param: account_id
            type: int
@@ -118,48 +89,18 @@ class ETradeAccounts(object):
            rformat: other than json
            rtype: str'''
 
-        if dev:
-            uri = r'accounts/sandbox/rest/accountpositions'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s.%s' % (
-                    self.base_url_dev,
-                    uri,
-                    account_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s' % (
-                    self.base_url_dev,
-                    uri,
-                    account_id
-                    )
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='accounts',
+                action='accountpositions/{account}'.format(account=account_id),
+                response_type=response_type
+            )
+        }
 
-        else:
-            uri = r'accounts/rest/accountpositions'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s.%s' % (
-                    self.base_url_prod,
-                    uri,
-                    account_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s' % (
-                    self.base_url_prod,
-                    uri,
-                    account_id
-                    )
 
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def list_alerts(self, dev=True, resp_format='json'):
+    @ETrade.Decorators.etrade_api_request
+    def list_alerts(self, response_type='json'):
         '''list_alerts(dev, resp_format) -> resp
            param: dev
            type: bool
@@ -172,44 +113,18 @@ class ETradeAccounts(object):
            rformat: other than json
            rtype: str'''
 
-        if dev:
-            uri = r'accounts/sandbox/rest/alerts'
-            if resp_format == 'json':
-                api_url = '%s/%s.%s' % (
-                    self.base_url_dev,
-                    uri,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s' % (
-                    self.base_url_dev,
-                    uri,
-                    )
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='accounts',
+                action='alerts',
+                response_type=response_type
+            )
+        }
 
-        else:
-            uri = r'accounts/rest/alerts'
-            if resp_format == 'json':
-                api_url = '%s/%s.%s' % (
-                    self.base_url_prod,
-                    uri,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s' % (
-                    self.base_url_prod,
-                    uri,
-                    )
 
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def read_alert(self, alert_id, dev=True, resp_format='json'):
+    @ETrade.Decorators.etrade_api_request
+    def read_alert(self, alert_id, response_type='json'):
         '''read_alert(alert_id, dev, resp_format) -> resp
            param: alert_id
            type: int
@@ -225,48 +140,18 @@ class ETradeAccounts(object):
            rformat: other than json
            rtype: str'''
 
-        if dev:
-            uri = r'accounts/sandbox/rest/alerts'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s.%s' % (
-                    self.base_url_dev,
-                    uri,
-                    alert_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s' % (
-                    self.base_url_dev,
-                    uri,
-                    alert_id
-                    )
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='accounts',
+                action='alerts/{alert}'.format(alert=alert_id),
+                response_type=response_type
+            )
+        }
 
-        else:
-            uri = r'accounts/rest/alerts'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s.%s' % (
-                    self.base_url_prod,
-                    uri,
-                    alert_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s' % (
-                    self.base_url_prod,
-                    uri,
-                    alert_id
-                    )
 
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
-    def delete_alert(self, alert_id, dev=True, resp_format='json'):
+    @ETrade.Decorators.etrade_api_request
+    def delete_alert(self, alert_id, response_type='json'):
         '''delete_alert(alert_id, dev, resp_format) -> resp
            param: alert_id
            type: int
@@ -282,47 +167,17 @@ class ETradeAccounts(object):
            rformat: other than json
            rtype: str'''
 
-        if dev:
-            uri = r'accounts/sandbox/rest/alerts'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s.%s' % (
-                    self.base_url_dev,
-                    uri,
-                    alert_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s' % (
-                    self.base_url_dev,
-                    uri,
-                    alert_id
-                    )
+        return {
+            'method': 'DELETE',
+            'url': self.make_url(
+                module='accounts',
+                action='alerts/{alert}'.format(alert=alert_id),
+                response_type=response_type
+            )
+        }
 
-        else:
-            uri = r'accounts/rest/alerts'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s.%s' % (
-                    self.base_url_prod,
-                    uri,
-                    alert_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s' % (
-                    self.base_url_prod,
-                    uri,
-                    alert_id
-                    )
 
-        LOGGER.debug(api_url)
-        req = self.session.delete(api_url)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
-
+    @ETrade.Decorators.etrade_api_request
     def get_transaction_history(self, account_id, dev=True,
                                 group='ALL',
                                 asset_type='ALL',
@@ -367,77 +222,40 @@ class ETradeAccounts(object):
 
         # add each optional argument not equal to 'ALL' to the uri
         optional_args = [group, asset_type, transaction_type, ticker_symbol]
-        optional_uri = ''
-        for optional_arg in optional_args:
-            if optional_arg.upper() != 'ALL':
-                optional_uri = '%s/%s' % (
-                    optional_uri,
-                    optional_arg
-                )
-        # Set Env
-        if dev:
-            #assemble the following:
-            #self.base_url_dev: https://etws.etrade.com
-            #uri:               /accounts/rest
-            #account_id:        /{accountId}
-            #format string:     /transactions
-            # if not 'ALL' args:
-            #   group:              /{Group}
-            #   asset_type          /{AssetType}
-            #   transaction_type:   /{TransactionType}
-            #   ticker_symbol:      /{TickerSymbol}
-            #resp_format:       {.json}
-            #payload:           kwargs
-            #
-            uri = r'accounts/sandbox/rest'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s/transactions%s.%s' % (
-                    self.base_url_dev,
-                    uri,
-                    account_id,
-                    optional_uri,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s/transactions%s' % (
-                    self.base_url_dev,
-                    uri,
-                    account_id,
-                    optional_uri
-                    )
-        else:
-            uri = r'accounts/rest'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s/transactions%s.%s' % (
-                    self.base_url_prod,
-                    uri,
-                    account_id,
-                    optional_uri,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s/transactions%s' % (
-                    self.base_url_prod,
-                    uri,
-                    account_id,
-                    optional_uri
-                    )
+        optional_args = map(lambda x: x.upper(), optional_args)
+        optional_args = filter(lambda x: x != 'ALL', optional_args)
 
-        # Build Payload
-        payload = kwargs
-        LOGGER.debug('payload: %s', payload)
+        #assemble the following:
+        #self.base_url_dev: https://etws.etrade.com
+        #uri:               /accounts/rest
+        #account_id:        /{accountId}
+        #format string:     /transactions
+        # if not 'ALL' args:
+        #   group:              /{Group}
+        #   asset_type          /{AssetType}
+        #   transaction_type:   /{TransactionType}
+        #   ticker_symbol:      /{TickerSymbol}
+        #resp_format:       {.json}
+        #payload:           kwargs
+        #
 
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url, params=payload)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='accounts',
+                action='{account}/transactions{optionals}'.format(
+                    account=account_id,
+                    optionals='/{}'.format('/'.join(optional_args))
+                ),
+                response_type=response_type
+            ),
+            'params': kwargs
+        }
 
-        if resp_format == 'json':
-            return req.json()
-        return req.text
 
-    def get_transaction_details(self, account_id, transaction_id, dev=True,
-                                resp_format='json', **kwargs):
+    @ETrade.Decorators.etrade_api_request
+    def get_transaction_details(self, account_id, transaction_id,
+                                response_type='json', **kwargs):
         '''get_transaction_details(account_id, transaction_id, dev, resp_format) -> resp
            param: account_id
            type: int
@@ -448,51 +266,15 @@ class ETradeAccounts(object):
            required: true
            description: Numeric transaction ID'''
 
-        # Set Env
-        if dev:
-            uri = r'accounts/sandbox/rest'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s/transactions/%s.%s' % (
-                    self.base_url_dev,
-                    uri,
-                    account_id,
-                    transaction_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s/transactions/%s' % (
-                    self.base_url_dev,
-                    uri,
-                    account_id,
-                    transaction_id
-                    )
-        else:
-            uri = r'accounts/rest'
-            if resp_format == 'json':
-                api_url = '%s/%s/%s/transactions/%s.%s' % (
-                    self.base_url_prod,
-                    uri,
-                    account_id,
-                    transaction_id,
-                    resp_format
-                    )
-            elif resp_format == 'xml':
-                api_url = '%s/%s/%s/transactions/%s' % (
-                    self.base_url_prod,
-                    uri,
-                    account_id,
-                    transaction_id
-                    )
-
-        # Build Payload
-        payload = kwargs
-        LOGGER.debug('payload: %s', payload)
-
-        LOGGER.debug(api_url)
-        req = self.session.get(api_url, params=payload)
-        req.raise_for_status()
-        LOGGER.debug(req.text)
-
-        if resp_format == 'json':
-            return req.json()
-        return req.text
+        return {
+            'method': 'GET',
+            'url': self.make_url(
+                module='account',
+                action='{account}/transations/{transaction}'.format(
+                    account=account_id,
+                    transaction=transation_id
+                ),
+                response_type=response_type
+            ),
+            'params': kwargs
+        }

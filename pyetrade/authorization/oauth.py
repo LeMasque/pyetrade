@@ -33,9 +33,9 @@ class ETradeOAuth(ETrade):
         # We don't want to call our super's constructor here, since we're special
 
         # override instance session variable since we haven't actually done oauth yet.
-        consumer_key, consumer_secret, _, __ = auth_info
+        self.consumer_key, consumer_secret, _, __ = auth_info
         self.session = OAuth1Session(
-            consumer_key,
+            self.consumer_key,
             consumer_secret,
             callback_uri=callback_url,
             signature_type='AUTH_HEADER'
@@ -79,42 +79,30 @@ class ETradeOAuth(ETrade):
            rtype: str
            description: Etrade autherization url'''
 
-        # get request token
-        fetch_response = self.session.fetch_request_token(self.make_url(
+        request_token_url = self.make_url(
             module='oauth',
             action='request_token',
             response_type='',
             rest=False,
             env_aware=False
-        ))
+        )
+        print('request_token_url: {}'.format(request_token_url))
+
+        # get request token
+        fetch_response = self.session.fetch_request_token(request_token_url)
+
+        print('fetch_response: {}'.format(fetch_response))
 
         resource_owner_key = fetch_response['oauth_token']
         resource_owner_secret = fetch_response['oauth_token_secret']
 
-        auth_url = self.session.authorization_url(ETrade.AUTH_TOKEN_URL)
-        print('Please go here to authorize: {}'.format(auth_url))
+        auth_url = '{}?key={c_key}&token={ro_key}'.format(
+            ETrade.AUTH_TOKEN_URL,
+            c_key=self.consumer_key,
+            ro_key=resource_owner_key
+        )
+        return auth_url
 
-        # TODO: security?
-        user_response = input('Paste the full redirect URL here: ')
-
-        oauth_response = oauth.parse_authorization_response(redirect_response)
-        verifier = oauth_response.get('oauth_verifier')
-
-        return verifier
-
-        ## get authorization url
-        ## etrade format: url?key&token
-        #authorization_url = self.session.authorization_url(ETrade.AUTH_TOKEN_URL)
-        #akey = self.session.parse_authorization_response(authorization_url)
-        ## store oauth_token
-        #self.resource_owner_key = akey['oauth_token']
-        #formated_auth_url = '%s?key=%s&token=%s' % (self.auth_token_url,
-        #                                            self.consumer_key,
-        #                                            akey['oauth_token'])
-        #self.verifier_url = formated_auth_url
-        #LOGGER.debug(formated_auth_url)
-
-        #return formated_auth_url
 
     def get_access_token(self, verifier):
         '''get_access_token(verifier) -> access_token
@@ -169,7 +157,7 @@ class ETradeOAuth(ETrade):
         ))
 
         #LOGGER.debug(self.access_token)
-        LOGGER.debug(oauth_tokens)
+        self.log.debug(oauth_tokens)
 
         return (
             oauth_tokens['oauth_token'],

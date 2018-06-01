@@ -6,6 +6,8 @@
 """
 from requests_oauthlib import OAuth1Session
 
+        
+
 class ETrade(object):
     """
         ETrade object
@@ -22,17 +24,19 @@ class ETrade(object):
             Decorators since we can't just make normal decorators in our
             class.
         """
-        @classmethod
-        def etrade_api_request(self, function):
+        @staticmethod
+        def etrade_api_request(function):
             """
                 decorator function to ease of making API calls
             """
-            def decorated(response_type, *args, **kwargs):
-                requests_params = function(*args, **kwargs)
+            def decorated(self, *args, **kwargs):
+                requests_params = function(self, *args, **kwargs)
 
                 self.log.debug(requests_params['url'])
                 response = self.session.request(**requests_params)
 
+                # default response_type is json, otherwise use the response_type passed
+                response_type = kwargs.get('response_type', 'json')
 
                 response.raise_for_status()
                 self.log.debug(response.text)
@@ -45,7 +49,6 @@ class ETrade(object):
                 return response_type_map[response_type]()
 
             return decorated
-        
 
     def __init__(self, auth_info, environment='dev'):
         """
@@ -87,8 +90,8 @@ class ETrade(object):
             host='etws{env_ext}.etrade.com'.format(env_ext=env_ext),
             module=module,
             env_ext='/{}'.format(env_ext) if env_ext else '',
-            rest='/rest/' if rest else '',
-            action=action,
+            rest='/rest' if rest else '',
+            action='/{}'.format(action),
             rtype='.{}'.format(response_type) if response_type else ''
         )
 

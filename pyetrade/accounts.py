@@ -221,9 +221,11 @@ class ETradeAccounts(ETrade):
            description: see ETrade API docs'''
 
         # add each optional argument not equal to 'ALL' to the uri
-        optional_args = [group, asset_type, transaction_type, ticker_symbol]
-        optional_args = map(lambda x: x.upper(), optional_args)
-        optional_args = filter(lambda x: x != 'ALL', optional_args)
+        optional_args = [
+            optional_arg.upper() for optional_arg in
+            [group, asset_type, transaction_type, ticker_symbol]
+            if optional_arg != 'ALL'
+        ]
 
         #assemble the following:
         #self.base_url_dev: https://etws.etrade.com
